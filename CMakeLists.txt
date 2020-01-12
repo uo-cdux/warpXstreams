@@ -14,12 +14,19 @@ project(advection CXX)
 find_package(VTKm REQUIRED QUIET)
 FIND_PACKAGE(Boost COMPONENTS program_options REQUIRED)
 
-add_executable(advection advection.cxx)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
-target_link_libraries(advection PRIVATE vtkm_filter ${Boost_LIBRARIES})
+
+add_executable(advection advection.cxx)
+target_link_libraries(advection PRIVATE vtkm_cont vtkm_filter ${Boost_LIBRARIES})
 vtkm_add_target_information(advection
                             DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
                             DEVICE_SOURCES advection.cxx)
 if(TARGET vtkm::tbb)
   target_compile_definitions(advection PRIVATE BUILDING_TBB_VERSION)
 endif()
+
+add_executable(simpledata simpledata.cxx)
+target_link_libraries(simpledata PRIVATE vtkm_cont ${Boost_LIBRARIES})
+vtkm_add_target_information(simpledata
+                            DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
+                            DEVICE_SOURCES simple.cxx)
