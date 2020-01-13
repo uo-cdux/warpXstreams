@@ -40,8 +40,16 @@ void MakeSeedsFromCoords(vtkm::cont::CoordinateSystem &coords,
   invoker(SeedsGenerator{}, coords.GetData(), seeds);
 }
 
-void MakeRandomSeeds(vtkm::cont::ArrayHandle<vtkm::Particle> &seeds) {
-  // Not implemented yet.
+void MakeRandomSeeds(vtkm::cont::ArrayHandle<vtkm::Particle> &seeds, vtkm::Id seedcount) {
+  seeds.Allocate(seedcount);
+  auto portal = seeds.GetPortalControl();
+  for(vtkm::Id index = 0; index < seedcount; index++)
+  {
+    vtkm::Particle particle;
+    particle.ID = index;
+    particle.Pos = vtkm::Vec3f(0.5, 0.5, 0.5);
+    portal.Set(index, particle);
+  }
 }
 
 } // namespace
@@ -53,15 +61,19 @@ int main(int argc, char **argv) {
                     ("field", options::value<std::string>()->required(), "Name of vector field")
                     ("steps", options::value<vtkm::Id>()->required(), "Number of Steps")
                     ("length", options::value<vtkm::FloatDefault>()->required(), "Length of a single step")
-                    ("seeding", options::value<vtkm::Id>()->required(), "Seeding options : UNIFORM, RANDOM, SINGLE");
+                    ("seeding", options::value<vtkm::Id>()->required(), "Seeding options : UNIFORM, RANDOM, SINGLE")
                     ("seeds", options::value<vtkm::Id>()->required(), "Number of seeds to use (UNIFORM seeding ignores this)");
   options::variables_map vm;
   options::store(options::parse_command_line(argc, argv, desc),
                  vm); // can throw
   options::notify(vm);
-  if (!(vm.count("data") && vm.count("steps") && vm.count("length") &&
-        vm.count("seeding") && vm.count("field"))) {
-    std::cout << "Advection Benchmark" << std::endl << desc << std::endl;
+  if (!(vm.count("data")
+        && vm.count("field")
+        && vm.count("steps")
+        && vm.count("length")
+        && vm.count("seeding")
+        && vm.count("seeds"))) {
+    std::cout << "Roofline experiments" << std::endl << desc << std::endl;
   }
   // Assuming uniform seeding for now.
 
@@ -69,6 +81,7 @@ int main(int argc, char **argv) {
   std::string fieldname = vm["field"].as<std::string>();
   vtkm::Id steps = vm["steps"].as<vtkm::Id>();
   vtkm::FloatDefault length = vm["length"].as<vtkm::FloatDefault>();
+  vtkm::Id seedcount = vm["seeds"].as<vtkm::Id>();
 
   using FieldType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
   using SeedsType = vtkm::cont::ArrayHandle<vtkm::Particle>;
@@ -94,7 +107,7 @@ int main(int argc, char **argv) {
   IntegratorType integrator(evaluator, length);
 
   SeedsType seeds;
-  MakeSeedsFromCoords(coords, seeds);
+  MakeRandomSeeds(seeds, seedcount);
   vtkm::cont::ArrayHandleConstant<vtkm::Id> particleSteps(
       steps, seeds.GetNumberOfValues());
   ParticleType particles(seeds, steps);
