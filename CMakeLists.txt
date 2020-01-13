@@ -30,3 +30,12 @@ target_link_libraries(simpledata PRIVATE vtkm_cont ${Boost_LIBRARIES})
 vtkm_add_target_information(simpledata
                             DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
                             DEVICE_SOURCES simple.cxx)
+
+add_executable(roofexperiments roofexperiments.cxx)
+target_link_libraries(roofexperiments PRIVATE vtkm_cont vtkm_filter ${Boost_LIBRARIES})
+vtkm_add_target_information(roofexperiments
+                            DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
+                            DEVICE_SOURCES roofexperiments.cxx)
+if(TARGET vtkm::tbb)
+  target_compile_definitions(roofexperiments PRIVATE BUILDING_TBB_VERSION)
+endif()
