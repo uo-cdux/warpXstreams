@@ -49,15 +49,11 @@ void MakeRandomSeeds(vtkm::cont::ArrayHandle<vtkm::Particle> &seeds) {
 int main(int argc, char **argv) {
   namespace options = boost::program_options;
   options::options_description desc("Options");
-  desc.add_options()("data", options::value<std::string>()->required(),
-                     "Path to dataset")(
-      "field", options::value<std::string>()->required(),
-      "Name of vector field")("steps", options::value<vtkm::Id>()->required(),
-                              "Number of Steps")(
-      "length", options::value<vtkm::FloatDefault>()->required(),
-      "Length of a single step")("seeding",
-                                 options::value<vtkm::UInt8>()->required(),
-                                 "Seeding options : UNIFORM, RANDOM");
+  desc.add_options()("data", options::value<std::string>()->required(), "Path to dataset")
+                    ("field", options::value<std::string>()->required(), "Name of vector field")
+                    ("steps", options::value<vtkm::Id>()->required(), "Number of Steps")
+                    ("length", options::value<vtkm::FloatDefault>()->required(), "Length of a single step")
+                    ("seeding", options::value<vtkm::UInt8>()->required(), "Seeding options : UNIFORM, RANDOM");
   options::variables_map vm;
   options::store(options::parse_command_line(argc, argv, desc),
                  vm); // can throw
