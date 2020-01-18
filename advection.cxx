@@ -21,18 +21,6 @@ enum class Seeding {
   RANDOM,
 };
 
-class SeedsGenerator : public vtkm::worklet::WorkletMapField {
-public:
-  using ControlSignature = void(FieldIn, FieldOut);
-  using ExecutionSignature = void(WorkIndex, _1, _2);
-
-  template <typename PointType>
-  VTKM_EXEC void operator()(const vtkm::Id &index, const PointType &point,
-                            vtkm::Particle &particle) const {
-    particle.ID = index;
-    particle.Pos = point;
-  }
-};
 
 void MakeSeedsFromCoords(vtkm::cont::CoordinateSystem &coords,
                          vtkm::cont::ArrayHandle<vtkm::Particle> &seeds) {
@@ -58,8 +46,12 @@ int main(int argc, char **argv) {
   options::store(options::parse_command_line(argc, argv, desc),
                  vm); // can throw
   options::notify(vm);
-  if (!(vm.count("data") && vm.count("steps") && vm.count("length") &&
-        vm.count("seeding") && vm.count("field"))) {
+  if (!(vm.count("data")
+      && vm.count("steps")
+      && vm.count("length")
+      && vm.count("field"))
+      && seeding::ValidateSeedingOptions(vm))
+  {
     std::cout << "Advection Benchmark" << std::endl << desc << std::endl;
   }
   // Assuming uniform seeding for now.
@@ -92,6 +84,9 @@ int main(int argc, char **argv) {
   EvaluatorType evaluator(coords, cells, field);
   IntegratorType integrator(evaluator, length);
 
+  /*
+   * Make seeds based on the seeding option.
+   */
   SeedsType seeds;
   MakeSeedsFromCoords(coords, seeds);
   vtkm::cont::ArrayHandleConstant<vtkm::Id> particleSteps(
