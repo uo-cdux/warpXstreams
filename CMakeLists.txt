@@ -16,7 +16,7 @@ FIND_PACKAGE(Boost COMPONENTS program_options REQUIRED)
 
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
 
-add_executable(advection advection.cxx)
+add_executable(advection advection.cxx SeedingOptions.hxx)
 target_link_libraries(advection PRIVATE vtkm_cont vtkm_filter ${Boost_LIBRARIES})
 vtkm_add_target_information(advection
                             DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
@@ -31,7 +31,7 @@ vtkm_add_target_information(simpledata
                             DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
                             DEVICE_SOURCES simple.cxx)
 
-add_executable(roofexperiments roofexperiments.cxx)
+add_executable(roofexperiments roofexperiments.cxx SeedingOptions.hxx)
 target_link_libraries(roofexperiments PRIVATE vtkm_cont vtkm_filter ${Boost_LIBRARIES})
 vtkm_add_target_information(roofexperiments
                             DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS

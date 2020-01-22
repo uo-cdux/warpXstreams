@@ -14,25 +14,7 @@
 #include <vtkm/worklet/particleadvection/Integrators.h>
 #include <vtkm/worklet/particleadvection/ParticleAdvectionWorklets.h>
 
-namespace {
-
-enum class Seeding {
-  UNIFORM = 0,
-  RANDOM,
-};
-
-
-void MakeSeedsFromCoords(vtkm::cont::CoordinateSystem &coords,
-                         vtkm::cont::ArrayHandle<vtkm::Particle> &seeds) {
-  vtkm::cont::Invoker invoker;
-  invoker(SeedsGenerator{}, coords.GetData(), seeds);
-}
-
-void MakeRandomSeeds(vtkm::cont::ArrayHandle<vtkm::Particle> &seeds) {
-  // Not implemented yet.
-}
-
-} // namespace
+#include "SeedingOptions.hxx"
 
 int main(int argc, char **argv) {
   namespace options = boost::program_options;
@@ -41,16 +23,20 @@ int main(int argc, char **argv) {
                     ("field", options::value<std::string>()->required(), "Name of vector field")
                     ("steps", options::value<vtkm::Id>()->required(), "Number of Steps")
                     ("length", options::value<vtkm::FloatDefault>()->required(), "Length of a single step")
-                    ("seeding", options::value<vtkm::UInt8>()->required(), "Seeding options : UNIFORM, RANDOM");
+                    ("seeding", options::value<int>()->required(), "Seeding options : UNIFORM, RANDOM");
+                    ("density", options::value<std::vector<vtkm::Id>>()->multitoken(), "Reduction factor in density");
+                    ("point", options::value<std::vector<vtkm::Id>>()->multitoken(), "Reduction factor in density");
+                    ("seeds", options::value<std::vector<vtkm::Id>>()->multitoken(), "Number of Seeds");
   options::variables_map vm;
-  options::store(options::parse_command_line(argc, argv, desc),
-                 vm); // can throw
+  options::store(options::parse_command_line(argc, argv, desc), vm); // can throw
   options::notify(vm);
+
+  seeding::SeedingConfig config;
   if (!(vm.count("data")
       && vm.count("steps")
       && vm.count("length")
       && vm.count("field"))
-      && seeding::ValidateSeedingOptions(vm))
+      && seeding::ValidateSeedingOptions(vm, config))
   {
     std::cout << "Advection Benchmark" << std::endl << desc << std::endl;
   }
@@ -88,7 +74,7 @@ int main(int argc, char **argv) {
    * Make seeds based on the seeding option.
    */
   SeedsType seeds;
-  MakeSeedsFromCoords(coords, seeds);
+  seeding::GenerateSeeds(config, dataset, seeds);
   vtkm::cont::ArrayHandleConstant<vtkm::Id> particleSteps(
       steps, seeds.GetNumberOfValues());
   ParticleType particles(seeds, steps);
