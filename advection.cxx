@@ -20,23 +20,9 @@
 
 #include <papi.h>
 
-static void test_fail(char *file, int line, char *call, int retval){
-    printf("%s\tFAILED\nLine # %d\n", file, line);
-    if ( retval == PAPI_ESYS ) {
-        char buf[128];
-        memset( buf, '\0', sizeof(buf) );
-        sprintf(buf, "System error in %s:", call );
-        perror(buf);
-    }
-    else if ( retval > 0 ) {
-        printf("Error calculating: %s\n", call );
-    }
-    else {
-        printf("Error in %s: %s\n", call, PAPI_strerror(retval) );
-    }
-    printf("\n");
-    exit(1);
-}
+#define NUM_EVENTS 4
+#define THRESHOLD 10000
+#define ERROR_RETURN(retval) { fprintf(stderr, "Error %d %s:line %d: \n", retval,__FILE__,__LINE__);  exit(retval); } 
 
 int main(int argc, char **argv) {
   namespace options = boost::program_options;
@@ -62,7 +48,6 @@ int main(int argc, char **argv) {
   {
     std::cout << "Advection Benchmark" << std::endl << desc << std::endl;
   }
-  // Assuming uniform seeding for now.
 
   std::string data = vm["data"].as<std::string>();
   std::string fieldname = vm["field"].as<std::string>();
@@ -71,11 +56,10 @@ int main(int argc, char **argv) {
 
   using FieldType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
   using SeedsType = vtkm::cont::ArrayHandle<vtkm::Particle>;
-  using EvaluatorType =
-      vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
-  using IntegratorType =
-      vtkm::worklet::particleadvection::RK4Integrator<EvaluatorType>;
+  using EvaluatorType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
+  using IntegratorType = vtkm::worklet::particleadvection::RK4Integrator<EvaluatorType>;
   using ParticleType = vtkm::worklet::particleadvection::Particles;
+  using AdvectionWorklet = vtkm::worklet::particleadvection::ParticleAdvectWorklet;
 
   vtkm::io::reader::VTKDataSetReader dataReader(data);
   vtkm::cont::DataSet dataset = dataReader.ReadDataSet();
@@ -108,31 +92,61 @@ int main(int argc, char **argv) {
 
   timer.Reset();
 
+  int retval, num_hwcntrs = 0;
+  int Events[NUM_EVENTS] = {PAPI_FP_OPS, PAPI_SP_OPS, PAPI_L3_TCA, PAPI_L3_TCM};
+  char errstring[PAPI_MAX_STR_LEN];
+  /*This is going to store our list of results*/
+  long long values[NUM_EVENTS];
+
+  /***************************************************************************
+  *  This part initializes the library and compares the version number of the*
+  * header file, to the version of the library, if these don't match then it *
+  * is likely that PAPI won't work correctly.If there is an error, retval    *
+  * keeps track of the version number.                                       *
+  ***************************************************************************/
+  if((retval = PAPI_library_init(PAPI_VER_CURRENT)) != PAPI_VER_CURRENT )
+  {
+     fprintf(stderr, "Error: %d %s\n",retval, errstring);
+     exit(1);
+  }
+  /**************************************************************************
+   * PAPI_num_counters returns the number of hardware counters the platform *
+   * has or a negative number if there is an error                          *
+   **************************************************************************/
+  if ((num_hwcntrs = PAPI_num_counters()) < PAPI_OK)
+  {
+     printf("There are no counters available. \n");
+     exit(1);
+  }
+  printf("There are %d counters in this system\n",num_hwcntrs);
+
+
   timer.Start();
 
-  float real_time, proc_time, mflops;
-  long long flpins;
-  int retval;
-  /* Setup PAPI library and begin collecting data from the counters */
-  if((retval=PAPI_flops( &real_time, &proc_time, &flpins, &mflops))<PAPI_OK)
-    test_fail(__FILE__, __LINE__, "PAPI_flops", retval);
+  if ( (retval = PAPI_start_counters(Events, NUM_EVENTS)) != PAPI_OK)
+     ERROR_RETURN(retval);
 
-  using AdvectionWorklet =
-      vtkm::worklet::particleadvection::ParticleAdvectWorklet;
+  printf("\nCounter Started: \n");
+
   vtkm::cont::Invoker invoker;
   invoker(AdvectionWorklet{}, indices, integrator, particles, particleSteps);
 
-  /* Collect the data into the variables passed in */
-  if((retval=PAPI_flops( &real_time, &proc_time, &flpins, &mflops))<PAPI_OK)
-    test_fail(__FILE__, __LINE__, "PAPI_flops", retval);
-  printf("Real_time:\t%f\nProc_time:\t%f\nTotal flpins:\t%lld\nMFLOPS:\t\t%f\n",
-  real_time, proc_time, flpins, mflops);
-  printf("%s\tPASSED\n", __FILE__);
-  PAPI_shutdown();
+  if ( (retval=PAPI_read_counters(values, NUM_EVENTS)) != PAPI_OK)
+     ERROR_RETURN(retval);
+
+  printf("Read successfully\n");
+  printf("The floating point operations : %lld \n",values[0]);
+  printf("The single precision floating point operations : %lld \n", values[1] );
+  printf("Last level data cache accesses : %lld \n", values[2] );
+  printf("Last level data cache misses : %lld \n", values[3] );
+
+  if ((retval=PAPI_stop_counters(values, NUM_EVENTS)) != PAPI_OK)
+    ERROR_RETURN(retval);
 
   timer.Stop();
 
   std::cout << "Advection : " << timer.GetElapsedTime() << std::endl;
+  VerifySeeds(seeds);
 
   return 1;
 }
