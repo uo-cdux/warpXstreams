@@ -10,14 +10,22 @@
 cmake_minimum_required(VERSION 3.8...3.15 FATAL_ERROR)
 project(advection CXX)
 
-#Find the VTK-m package
-find_package(VTKm REQUIRED QUIET)
-FIND_PACKAGE(Boost COMPONENTS program_options REQUIRED)
+list(APPEND CMAKE_MODULE_PATH "~/repositories/advection-benchmarks")
 
+# Find the VTK-m package
+find_package(VTKm REQUIRED QUIET)
+
+# Boost
+FIND_PACKAGE(Boost COMPONENTS program_options REQUIRED)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
 
-add_executable(advection advection.cxx SeedingOptions.hxx)
-target_link_libraries(advection PRIVATE vtkm_cont vtkm_filter ${Boost_LIBRARIES})
+# PAPI
+find_package(PAPI REQUIRED)
+include_directories(${PAPI_INCLUDE_DIRS})
+link_directories(${PAPI_LIBRARIES})
+
+add_executable(advection advection.cxx SeedingConfig.h SeedGenerator.hxx ValidateOptions.hxx)
+target_link_libraries(advection PRIVATE vtkm_cont vtkm_filter papi pfm ${Boost_LIBRARIES})
 vtkm_add_target_information(advection
                             DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
                             DEVICE_SOURCES advection.cxx)
@@ -31,11 +39,11 @@ vtkm_add_target_information(simpledata
                             DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
                             DEVICE_SOURCES simple.cxx)
 
-add_executable(roofexperiments roofexperiments.cxx SeedingOptions.hxx)
-target_link_libraries(roofexperiments PRIVATE vtkm_cont vtkm_filter ${Boost_LIBRARIES})
-vtkm_add_target_information(roofexperiments
-                            DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
-                            DEVICE_SOURCES roofexperiments.cxx)
-if(TARGET vtkm::tbb)
-  target_compile_definitions(roofexperiments PRIVATE BUILDING_TBB_VERSION)
-endif()
+#add_executable(roofexperiments roofexperiments.cxx SeedingOptions.hxx)
+#target_link_libraries(roofexperiments PRIVATE vtkm_cont vtkm_filter ${Boost_LIBRARIES})
+#vtkm_add_target_information(roofexperiments
+#                            DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
+#                            DEVICE_SOURCES roofexperiments.cxx)
+#if(TARGET vtkm::tbb)
+#  target_compile_definitions(roofexperiments PRIVATE BUILDING_TBB_VERSION)
+#endif()
