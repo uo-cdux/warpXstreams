@@ -18,7 +18,11 @@
 #include "SeedGenerator.hxx"
 #include "ValidateOptions.hxx"
 
-#include <papi.h>
+//#include <papi.h>
+//#include <likwid.h>
+#include <variorum.h>
+
+//#include "advisor-annotate.h"
 
 #define NUM_EVENTS 4
 #define THRESHOLD 10000
@@ -87,66 +91,26 @@ int main(int argc, char **argv) {
   vtkm::cont::ArrayHandleIndex indices(seeds.GetNumberOfValues());
 
   timer.Stop();
-
   std::cout << "Pre-requisite : " << timer.GetElapsedTime() << std::endl;
 
   timer.Reset();
-
-  int retval, num_hwcntrs = 0;
-  int Events[NUM_EVENTS] = {PAPI_FP_OPS, PAPI_SP_OPS, PAPI_L3_TCA, PAPI_L3_TCM};
-  char errstring[PAPI_MAX_STR_LEN];
-  /*This is going to store our list of results*/
-  long long values[NUM_EVENTS];
-
-  /***************************************************************************
-  *  This part initializes the library and compares the version number of the*
-  * header file, to the version of the library, if these don't match then it *
-  * is likely that PAPI won't work correctly.If there is an error, retval    *
-  * keeps track of the version number.                                       *
-  ***************************************************************************/
-  if((retval = PAPI_library_init(PAPI_VER_CURRENT)) != PAPI_VER_CURRENT )
-  {
-     fprintf(stderr, "Error: %d %s\n",retval, errstring);
-     exit(1);
-  }
-  /**************************************************************************
-   * PAPI_num_counters returns the number of hardware counters the platform *
-   * has or a negative number if there is an error                          *
-   **************************************************************************/
-  if ((num_hwcntrs = PAPI_num_counters()) < PAPI_OK)
-  {
-     printf("There are no counters available. \n");
-     exit(1);
-  }
-  printf("There are %d counters in this system\n",num_hwcntrs);
-
-
   timer.Start();
 
-  if ( (retval = PAPI_start_counters(Events, NUM_EVENTS)) != PAPI_OK)
-     ERROR_RETURN(retval);
-
-  printf("\nCounter Started: \n");
+  //LIKWID_MARKER_INIT;
+  //LIKWID_MARKER_START("advection");
+  //ANNOTATE_SITE_BEGIN(advect);
+  variorum_monitoring(stdout);
 
   vtkm::cont::Invoker invoker;
   invoker(AdvectionWorklet{}, indices, integrator, particles, particleSteps);
 
-  if ( (retval=PAPI_read_counters(values, NUM_EVENTS)) != PAPI_OK)
-     ERROR_RETURN(retval);
-
-  printf("Read successfully\n");
-  printf("The floating point operations : %lld \n",values[0]);
-  printf("The single precision floating point operations : %lld \n", values[1] );
-  printf("Last level data cache accesses : %lld \n", values[2] );
-  printf("Last level data cache misses : %lld \n", values[3] );
-
-  if ((retval=PAPI_stop_counters(values, NUM_EVENTS)) != PAPI_OK)
-    ERROR_RETURN(retval);
+  //ANNOTATE_SITE_END(advect);
+  //LIKWID_MARKER_STOP("advection");
+  //LIKWID_MARKER_CLOSE;
 
   timer.Stop();
-
   std::cout << "Advection : " << timer.GetElapsedTime() << std::endl;
-  VerifySeeds(seeds);
+  //VerifySeeds(seeds);
 
   return 1;
 }
