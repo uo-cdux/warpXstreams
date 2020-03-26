@@ -90,7 +90,6 @@ void GenerateSeeds(SeedingConfig& config,
   {
     case Options::UNIFORM:
     {
-      std::cout << "Generating Uniform Seeds" << std::endl;
       vtkm::cont::CoordinateSystem coords = dataset.GetCoordinateSystem();
       MakeUniformSeeds(coords, seeds);
     }
@@ -106,7 +105,6 @@ void GenerateSeeds(SeedingConfig& config,
     case Options::SINGLE:
     // Needs a point
     {
-      std::cout << "Generating Single Seed" << std::endl;
       vtkm::Vec3f point = config.GetPoint();
       MakeSingleSeed(static_cast<vtkm::Id>(1), point, seeds);
     }
@@ -115,7 +113,6 @@ void GenerateSeeds(SeedingConfig& config,
     case Options::SINGLE_COPIES:
     // Needs a point
     {
-      std::cout << "Generating Single Seed Copies" << std::endl;
       vtkm::Id seedCount = config.GetSeedCount();
       vtkm::Vec3f point = config.GetPoint();
       MakeSingleSeed(seedCount, point, seeds);

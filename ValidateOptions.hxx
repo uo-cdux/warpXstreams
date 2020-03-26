@@ -21,20 +21,20 @@ bool ValidateSeedingOptions(options::variables_map& vm,
     return false;
   int param = vm["seeding"].as<int>();
   seeding::Options option = static_cast<seeding::Options>(param);
-  std::cout << "Option : " << param << std::endl;
+//  std::cout << "Option : " << param << std::endl;
   config.SetOption(option);
   switch(option)
   {
     case seeding::Options::UNIFORM:
     {
-      std::cout << "uniform seeding" << std::endl;
+//      std::cout << "uniform seeding" << std::endl;
       return true;
     }
     break;
 
     case seeding::Options::UNIFORM_SPARSE:
     {
-      std::cout << "uniform sparse seeding" << std::endl;
+//      std::cout << "uniform sparse seeding" << std::endl;
       std::vector<vtkm::Id> vec = vm["density"].as<std::vector<vtkm::Id>>();
       vtkm::Id3 density{vec[0], vec[1], vec[2]};
       config.SetDensity(density);
@@ -45,7 +45,7 @@ bool ValidateSeedingOptions(options::variables_map& vm,
     case seeding::Options::SINGLE:
     // Needs a point
     {
-      std::cout << "single seeding" << std::endl;
+ //     std::cout << "single seeding" << std::endl;
       std::vector<vtkm::FloatDefault> vec = vm["point"].as<std::vector<vtkm::FloatDefault>>();
       vtkm::Vec3f point{vec[0], vec[1], vec[2]};
       config.SetPoint(point);
@@ -56,7 +56,7 @@ bool ValidateSeedingOptions(options::variables_map& vm,
     case seeding::Options::SINGLE_COPIES:
     // Needs a point
     {
-      std::cout << "single seeding" << std::endl;
+//      std::cout << "single seeding" << std::endl;
       std::vector<vtkm::FloatDefault> vec = vm["point"].as<std::vector<vtkm::FloatDefault>>();
       vtkm::Vec3f point{vec[0], vec[1], vec[2]};
       config.SetPoint(point);

@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include <iostream>
 #include <string>
 
@@ -18,17 +20,20 @@
 #include "SeedGenerator.hxx"
 #include "ValidateOptions.hxx"
 
-//#include <papi.h>
-//#include <likwid.h>
-#include <variorum.h>
-
+#include <papi.h>
+#include <likwid.h>
+//extern "C" {
+//#include <variorum.h>
+//}
 //#include "advisor-annotate.h"
 
-#define NUM_EVENTS 4
+#define NUM_EVENT 3
 #define THRESHOLD 10000
-#define ERROR_RETURN(retval) { fprintf(stderr, "Error %d %s:line %d: \n", retval,__FILE__,__LINE__);  exit(retval); } 
+#define ERROR_RETURN(retval) { fprintf(stderr, "Error %d %s:line %d: \n", retval,__FILE__,__LINE__);  exit(retval); }
 
 int main(int argc, char **argv) {
+  vtkm::cont::SetStderrLogLevel(vtkm::cont::LogLevel::Off);
+
   namespace options = boost::program_options;
   options::options_description desc("Options");
   desc.add_options()("data", options::value<std::string>()->required(), "Path to dataset")
@@ -91,26 +96,57 @@ int main(int argc, char **argv) {
   vtkm::cont::ArrayHandleIndex indices(seeds.GetNumberOfValues());
 
   timer.Stop();
-  std::cout << "Pre-requisite : " << timer.GetElapsedTime() << std::endl;
-
+  //std::cout << "Pre-requisite : " << timer.GetElapsedTime() << std::endl;
   timer.Reset();
-  timer.Start();
 
   //LIKWID_MARKER_INIT;
   //LIKWID_MARKER_START("advection");
   //ANNOTATE_SITE_BEGIN(advect);
-  variorum_monitoring(stdout);
+  //FILE* fp;
+  //fp = fopen("prof.txt", "w+");
+  //variorum_monitoring(stdout);
 
+  int retval;
+  int EventSet = PAPI_NULL;
+  /*must be initialized to PAPI_NULL before calling PAPI_create_event*/
+  int event_codes[NUM_EVENT]=  {PAPI_FP_OPS, PAPI_L3_TCM, PAPI_SR_INS};
+  long long values[NUM_EVENT];
+  if((retval = PAPI_library_init(PAPI_VER_CURRENT)) != PAPI_VER_CURRENT )
+    ERROR_RETURN(retval);
+  /* Creating event set   */
+  if ((retval=PAPI_create_eventset(&EventSet)) != PAPI_OK)
+  ERROR_RETURN(retval);
+  /* Add the array of events PAPI_TOT_INS and PAPI_TOT_CYC to the eventset*/
+  if ((retval=PAPI_add_events(EventSet, event_codes, NUM_EVENT)) != PAPI_OK)
+    ERROR_RETURN(retval);
+  /* Start counting */
+  if ( (retval=PAPI_start(EventSet)) != PAPI_OK)
+    ERROR_RETURN(retval);
+
+  timer.Start();
   vtkm::cont::Invoker invoker;
   invoker(AdvectionWorklet{}, indices, integrator, particles, particleSteps);
+  timer.Stop();
 
+  /* Stop counting, this reads from the counter as well as stop it. */
+  if ( (retval=PAPI_stop(EventSet,values)) != PAPI_OK)
+    ERROR_RETURN(retval);
+
+  long long flop = values[0];
+  long long memory = (values[1] + values[2]) * 8;
+  double time = timer.GetElapsedTime();
+  // Convert to GFlop/s
+  double flop_per_sec = static_cast<double>(flop) / (1000*1000*1000) / time;
+  double flop_per_byte = static_cast<double>(flop) / static_cast<double>(memory);
+
+  //variorum_monitoring(stdout);
   //ANNOTATE_SITE_END(advect);
   //LIKWID_MARKER_STOP("advection");
   //LIKWID_MARKER_CLOSE;
 
-  timer.Stop();
-  std::cout << "Advection : " << timer.GetElapsedTime() << std::endl;
-  //VerifySeeds(seeds);
+  std::cout << "MFLOP/sec : " << flop_per_sec << ", FLOP/Byte : " << flop_per_byte << std::endl;
 
+  //VerifySeeds(seeds);
+  //fclose(fp);
   return 1;
 }
