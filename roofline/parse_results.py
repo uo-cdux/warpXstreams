@@ -42,7 +42,12 @@ output = open(outfile, "w")
 header = "params,flop,intensity\n"
 output.write(header);
 
-filename = "032520-1"
+if len(sys.argv) < 2 :
+  print "Input file not provided"
+  sys.exit(-1)
+
+
+filename = sys.argv[1]
 if os.path.isfile(filename) and os.access(filename, os.R_OK):
   data = open(filename, "r")
   toWrite = GetTimingsFromFile(data)
@@ -61,4 +66,4 @@ axes = canvas.cartesian(xlabel = 'A.I. (FLOP/Byte)',
 x = data['intensity']
 y = data['flop']
 mark = axes.scatterplot(x, y)
-toyplot.pdf.render(canvas, "perf.pdf")
+toyplot.pdf.render(canvas, "%s.pdf" %filename)
