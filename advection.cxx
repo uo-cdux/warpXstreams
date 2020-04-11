@@ -10,6 +10,7 @@
 #include <vtkm/cont/ArrayCopy.h>
 #include <vtkm/cont/Timer.h>
 #include <vtkm/io/reader/VTKDataSetReader.h>
+#include <vtkm/io/writer/VTKDataSetWriter.h>
 #include <vtkm/worklet/ParticleAdvection.h>
 #include <vtkm/worklet/WorkletMapField.h>
 #include <vtkm/worklet/particleadvection/GridEvaluators.h>
@@ -67,8 +68,9 @@ int main(int argc, char **argv) {
   using SeedsType = vtkm::cont::ArrayHandle<vtkm::Particle>;
   using EvaluatorType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
   using IntegratorType = vtkm::worklet::particleadvection::RK4Integrator<EvaluatorType>;
-  using ParticleType = vtkm::worklet::particleadvection::Particles;
-  using AdvectionWorklet = vtkm::worklet::particleadvection::ParticleAdvectWorklet;
+  using ParticleType = vtkm::worklet::particleadvection::StateRecordingParticles;
+  //using AdvectionWorklet = vtkm::worklet::particleadvection::ParticleAdvectWorklet;
+  using AdvectionWorklet = vtkm::worklet::StreamlineWorklet;
 
   vtkm::io::reader::VTKDataSetReader dataReader(data);
   vtkm::cont::DataSet dataset = dataReader.ReadDataSet();
@@ -124,9 +126,19 @@ int main(int argc, char **argv) {
     ERROR_RETURN(retval);
 
   timer.Start();
-  vtkm::cont::Invoker invoker;
-  invoker(AdvectionWorklet{}, indices, integrator, particles, particleSteps);
+  //vtkm::cont::Invoker invoker;
+  //invoker(AdvectionWorklet{}, indices, integrator, particles, particleSteps);
+  AdvectionWorklet worklet;
+  vtkm::worklet::StreamlineResult result;
+  result = worklet.Run(integrator, particles, steps);
   timer.Stop();
+
+  vtkm::cont::DataSet output;
+  vtkm::cont::CoordinateSystem outputCoords("coordinates", res.Positions);
+  output.SetCellSet(res.PolyLines);
+  output.AddCoordinateSystem(outputCoords);
+  vtkm::io::writer::VTKDataSetWriter writer("output.vtk");
+  writer.WriteDataSet(output);
 
   /* Stop counting, this reads from the counter as well as stop it. */
   if ( (retval=PAPI_stop(EventSet,values)) != PAPI_OK)
