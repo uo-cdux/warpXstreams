@@ -7,6 +7,11 @@ import itertools
 import toyplot
 import toyplot.pdf
 
+colors = ['#00429d', '#204fa3', '#325ca9', '#4169ae', '#4e77b2',
+          '#5b84b7', '#6892ba', '#74a0bd', '#82aebf', '#90bcbf',
+          '#9fcbbf', '#afd9bb', '#c1e7b5', '#d7f4a7', '#fbff7c']
+colors.reverse()
+
 def GetTimingsFromFile(data):
   toWrite = []
   FLOPS = []
@@ -60,10 +65,14 @@ data = pandas.read_csv(outfile)
 #forplots = data.pivot_table(values='time', columns=['datasets','algorithm'], index='parenv')
 print data
 
+markers = []
+indices = range(0, 15)
 canvas = toyplot.Canvas('4in','2.5in')
 axes = canvas.cartesian(xlabel = 'A.I. (FLOP/Byte)',
-                        ylabel='Performance (GFLOP/sec)', margin=(50, 50))
-x = data['intensity']
-y = data['flop']
-mark = axes.scatterplot(x, y)
+                        ylabel='Performance (GFLOP/sec)', margin=(20, 100, 50, 50))
+for (x, y, index) in zip(data['intensity'], data['flop'], indices) :
+  mark = axes.scatterplot(x, y, color=colors[index], size=8, opacity=1.0)
+  markers.append(mark)
+legend = zip(data['params'], markers)
+canvas.legend(legend, corner=("right", 55, 50, 150))
 toyplot.pdf.render(canvas, "%s.pdf" %filename)
