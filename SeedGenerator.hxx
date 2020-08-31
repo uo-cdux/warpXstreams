@@ -26,7 +26,7 @@ public:
   template <typename PointType>
   VTKM_EXEC void operator()(const vtkm::Id &index,
                             const PointType &point,
-                            vtkm::Particle &particle) const
+                            vtkm::Massless &particle) const
   {
     particle.ID = index;
     particle.Pos = point;
@@ -45,7 +45,7 @@ public:
 
   VTKM_EXEC
   void operator()(const vtkm::Id index,
-                  vtkm::Particle& particle) const
+                  vtkm::Massless& particle) const
   {
     particle.ID = index;
     particle.Pos = this->Point;
@@ -56,7 +56,7 @@ private:
 };
 
 void MakeUniformSeeds(vtkm::cont::CoordinateSystem& coords,
-                      vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)
+                      vtkm::cont::ArrayHandle<vtkm::Massless>& seeds)
 {
   vtkm::cont::Invoker invoker;
   invoker(SeedsFromCoordinates{}, coords.GetData(), seeds);
@@ -69,7 +69,7 @@ void MakeUniformSeeds(vtkm::cont::CoordinateSystem& coords,
 
 void MakeSingleSeed(vtkm::Id seedCount,
                     vtkm::Vec3f& point,
-                    vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)
+                    vtkm::cont::ArrayHandle<vtkm::Massless>& seeds)
 {
   vtkm::cont::Invoker invoker;
   vtkm::cont::ArrayHandleIndex indices(seedCount);
@@ -78,7 +78,7 @@ void MakeSingleSeed(vtkm::Id seedCount,
 }
 
 void MakeRandomSeeds(vtkm::Id seedCount,
-                     vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)
+                     vtkm::cont::ArrayHandle<vtkm::Massless>& seeds)
 {
   (void)seedCount;
   (void)seeds;
@@ -88,7 +88,9 @@ void MakeRandomSeeds(vtkm::Id seedCount,
 class GetElectrons : public vtkm::worklet::WorkletMapField
 {
 public:
-  using ControlSignature = void(FieldIn position,
+  using ControlSignature = void(FieldIn x,
+                                FieldIn y,
+                                FieldIn z,
                                 FieldIn mass,
                                 FieldIn charge,
                                 FieldIn ux,
@@ -97,10 +99,12 @@ public:
                                 FieldIn weighting,
                                 FieldOut);
 
-  using ExecutionSignature = void(WorkIndex, _1, _2, _3, _4, _5, _6, _7, _8);
+  using ExecutionSignature = void(WorkIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10);
 
   void operator()(const vtkm::Id index,
-                  const vtkm::Vec3f& position,
+                  const vtkm::FloatDefault& x,
+                  const vtkm::FloatDefault& y,
+                  const vtkm::FloatDefault& z,
                   const vtkm::FloatDefault& mass,
                   const vtkm::FloatDefault& charge,
                   const vtkm::FloatDefault& ux,
@@ -109,7 +113,7 @@ public:
                   const vtkm::FloatDefault& w,
                   vtkm::Electron& electron) const
   {
-    electron = vtkm::Electron(position, index, mass, charge, w, vtkm::Vec3f(ux,uy,uz));
+    electron = vtkm::Electron(vtkm::Vec3f(x,y,z), index, mass, charge, w, vtkm::Vec3f(ux,uy,uz));
   }
 };
 
@@ -118,21 +122,24 @@ void GenerateElectrons(vtkm::cont::DataSet& dataset,
 {
   vtkm::cont::Invoker invoker;
   //vtkm::cont::ArrayHandle<vtkm::Vec3f> positions;
-  vtkm::cont::ArrayHandle<vtkm::FloatDefault> mass, charge, mom_x, mom_y, mom_z, weighting;
-  auto positions = dataset.GetCoordinateSystem().GetData();
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> mass, charge, weighting;
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> x, y, z, mom_x, mom_y, mom_z;
+  dataset.GetField("x").GetData().CopyTo(x);
+  dataset.GetField("y").GetData().CopyTo(y);
+  dataset.GetField("z").GetData().CopyTo(z);
   dataset.GetField("mass").GetData().CopyTo(mass);
   dataset.GetField("charge").GetData().CopyTo(charge);
   dataset.GetField("ux").GetData().CopyTo(mom_x);
   dataset.GetField("uy").GetData().CopyTo(mom_y);
   dataset.GetField("uz").GetData().CopyTo(mom_z);
   dataset.GetField("w").GetData().CopyTo(weighting);
-  invoker(GetElectrons{}, positions, mass, charge, mom_x, mom_y, mom_z, weighting, seeds);
+  invoker(GetElectrons{}, x, y, z, mass, charge, mom_x, mom_y, mom_z, weighting, seeds);
 }
 
 
 void GenerateSeeds(SeedingConfig& config,
                    vtkm::cont::DataSet& dataset,
-                   vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)
+                   vtkm::cont::ArrayHandle<vtkm::Massless>& seeds)
 {
   Options option = config.GetOption();
   switch(option)
