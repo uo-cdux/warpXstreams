@@ -26,7 +26,7 @@ public:
   template <typename PointType>
   VTKM_EXEC void operator()(const vtkm::Id &index,
                             const PointType &point,
-                            vtkm::Massless &particle) const
+                            vtkm::Particle &particle) const
   {
     particle.ID = index;
     particle.Pos = point;
@@ -45,7 +45,7 @@ public:
 
   VTKM_EXEC
   void operator()(const vtkm::Id index,
-                  vtkm::Massless& particle) const
+                  vtkm::Particle& particle) const
   {
     particle.ID = index;
     particle.Pos = this->Point;
@@ -56,7 +56,7 @@ private:
 };
 
 void MakeUniformSeeds(vtkm::cont::CoordinateSystem& coords,
-                      vtkm::cont::ArrayHandle<vtkm::Massless>& seeds)
+                      vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)
 {
   vtkm::cont::Invoker invoker;
   invoker(SeedsFromCoordinates{}, coords.GetData(), seeds);
@@ -69,7 +69,7 @@ void MakeUniformSeeds(vtkm::cont::CoordinateSystem& coords,
 
 void MakeSingleSeed(vtkm::Id seedCount,
                     vtkm::Vec3f& point,
-                    vtkm::cont::ArrayHandle<vtkm::Massless>& seeds)
+                    vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)
 {
   vtkm::cont::Invoker invoker;
   vtkm::cont::ArrayHandleIndex indices(seedCount);
@@ -78,7 +78,7 @@ void MakeSingleSeed(vtkm::Id seedCount,
 }
 
 void MakeRandomSeeds(vtkm::Id seedCount,
-                     vtkm::cont::ArrayHandle<vtkm::Massless>& seeds)
+                     vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)
 {
   (void)seedCount;
   (void)seeds;
@@ -113,7 +113,12 @@ public:
                   const vtkm::FloatDefault& w,
                   vtkm::Electron& electron) const
   {
-    electron = vtkm::Electron(vtkm::Vec3f(x,y,z), index, mass, charge, w, vtkm::Vec3f(ux,uy,uz));
+    // Change momentum to SI units
+    constexpr static vtkm::FloatDefault SPEED_OF_LIGHT =
+      static_cast<vtkm::FloatDefault>(2.99792458e8);
+    auto momentum = vtkm::Vec3f(ux,uy,uz);
+    momentum = momentum * mass * SPEED_OF_LIGHT;
+    electron = vtkm::Electron(vtkm::Vec3f(x,y,z), index, mass, charge, w, momentum);
   }
 };
 
@@ -139,7 +144,7 @@ void GenerateElectrons(vtkm::cont::DataSet& dataset,
 
 void GenerateSeeds(SeedingConfig& config,
                    vtkm::cont::DataSet& dataset,
-                   vtkm::cont::ArrayHandle<vtkm::Massless>& seeds)
+                   vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)
 {
   Options option = config.GetOption();
   switch(option)

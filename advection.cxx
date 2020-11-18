@@ -16,7 +16,7 @@
 
 #include <vtkm/worklet/particleadvection/Field.h>
 #include <vtkm/worklet/particleadvection/GridEvaluators.h>
-#include <vtkm/worklet/particleadvection/Integrators.h>
+#include <vtkm/worklet/particleadvection/EulerIntegrator.h>
 #include <vtkm/worklet/particleadvection/ParticleAdvectionWorklets.h>
 
 #include "SeedingConfig.h"
@@ -79,6 +79,9 @@ int main(int argc, char **argv) {
   vtkm::cont::DynamicCellSet cells = dataset.GetCellSet();
   vtkm::cont::CoordinateSystem coords = dataset.GetCoordinateSystem();
 
+  auto bounds = coords.GetBounds();
+  std::cout << "Bounds : " << bounds << std::endl;
+
   vtkm::cont::Timer timer;
 
   timer.Start();
@@ -110,7 +113,15 @@ int main(int argc, char **argv) {
 
     vtkm::cont::ArrayHandlePermutation<IndexType, SeedsType> temp(toKeep, allSeeds);
     vtkm::cont::Algorithm::Copy(temp, seeds);
-
+    auto portal = seeds.ReadPortal();
+    for (vtkm::Id i = 0; i < portal.GetNumberOfValues(); i++)
+    {
+      auto electron = portal.Get(i);
+      std::cout << electron.Pos 
+                << ", m : " << electron.Mass 
+                << ", u : " << electron.Momentum 
+                << std::endl;
+    }
     std::cout << "Permutation : " << seeds.GetNumberOfValues() <<  std::endl;
   }
 
