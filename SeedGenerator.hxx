@@ -155,7 +155,6 @@ void GenerateElectrons(vtkm::cont::DataSet& dataset,
   //vtkm::cont::ArrayHandle<vtkm::Vec3f> positions;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> mass, charge, weighting;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> x, y, z, mom_x, mom_y, mom_z;
-  std::cout << "Getting electrons" << std::endl;
   dataset.GetField("x").GetData().CopyTo(x);
   dataset.GetField("y").GetData().CopyTo(y);
   dataset.GetField("z").GetData().CopyTo(z);
@@ -166,7 +165,6 @@ void GenerateElectrons(vtkm::cont::DataSet& dataset,
   dataset.GetField("uz").GetData().CopyTo(mom_z);
   dataset.GetField("w").GetData().CopyTo(weighting);
   invoker(GetElectrons{}, x, y, z, mass, charge, mom_x, mom_y, mom_z, weighting, seeds);
-  std::cout << "Got electrons" << std::endl;
 }
 
 

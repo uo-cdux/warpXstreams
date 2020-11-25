@@ -53,9 +53,10 @@ public:
                             const vtkm::Id& initialNumSteps,
                             vtkm::Id& diff) const
   {
-    diff = 1 + p.NumSteps - initialNumSteps;
+      diff = 1 + p.NumSteps - initialNumSteps;
   }
 };
+
 } // namespace detail
 
 void GenerateRandomIndices(std::vector<vtkm::Id>& randoms, vtkm::Id numberOfSeeds, vtkm::Id total)
@@ -103,7 +104,7 @@ int main(int argc, char **argv) {
   using IndexType = vtkm::cont::ArrayHandle<vtkm::Id>;
   using SeedsType = vtkm::cont::ArrayHandle<vtkm::Electron>;
   using EvaluatorType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
-  using IntegratorType = vtkm::worklet::particleadvection::RK4Integrator<EvaluatorType>;
+  using IntegratorType = vtkm::worklet::particleadvection::EulerIntegrator<EvaluatorType>;
   using ParticleType = vtkm::worklet::particleadvection::StateRecordingParticles<vtkm::Electron>;
   using AdvectionWorklet = vtkm::worklet::particleadvection::ParticleAdvectWorklet;
 
@@ -179,12 +180,16 @@ int main(int argc, char **argv) {
 
   std::cout << "Advection : " << timer.GetElapsedTime() << std::endl;
 
-  vtkm::cont::ArrayHandle<vtkm::Vec3f> streams;
-  particles.GetCompactedHistory(streams);
+  // Has the count of points in a streamline
   vtkm::cont::ArrayHandle<vtkm::Id> numPoints;
   invoker(detail::ComputeNumPoints{}, seeds, initSteps, numPoints);
+  // Has all points for the streamline
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> streams;
+  particles.GetCompactedHistory(streams);
+  // Calculate the indices for streamlines cell set
   vtkm::cont::ArrayHandle<vtkm::Id> cellIndex;
   vtkm::Id connectivityLen = vtkm::cont::Algorithm::ScanExclusive(numPoints, cellIndex);
+  // Connectivity for the cells
   vtkm::cont::ArrayHandleCounting<vtkm::Id> connCount(0, 1, connectivityLen);
   vtkm::cont::ArrayHandle<vtkm::Id> connectivity;
   vtkm::cont::ArrayCopy(connCount, connectivity);
@@ -196,6 +201,11 @@ int main(int argc, char **argv) {
   auto offsets = vtkm::cont::ConvertNumIndicesToOffsets(numIndices);
   vtkm::cont::CellSetExplicit<> polylines;
   polylines.Fill(streams.GetNumberOfValues(), cellTypes, connectivity, offsets);
+
+//  auto cellIndexP = cellIndex.ReadPortal();
+//  auto offsetP = offsets.ReadPortal();
+//  for(vtkm::Id i = 0; i < 10; i++)
+//    std::cout << cellIndexP.Get(i) << " : " << offsetP.Get(i) << std::endl;
 
   vtkm::cont::DataSet output;
   output.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", streams));
