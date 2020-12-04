@@ -19,7 +19,7 @@ find_package(VTKm REQUIRED QUIET)
 FIND_PACKAGE(Boost COMPONENTS program_options REQUIRED)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
 
-add_executable(advection advection.cxx Config.h SeedGenerator.hxx ValidateOptions.hxx)
+add_executable(advection advection.cxx Config.h SeedGenerator.hxx ValidateOptions.hxx FilterStreamlines.h)
 add_executable(electrons MakeElectronDataset.cxx)
 target_link_libraries(advection PRIVATE vtkm_cont vtkm_io vtkm_worklet vtkm_filter ${Boost_LIBRARIES})
 target_link_libraries(electrons PRIVATE vtkm_cont vtkm_io vtkm_worklet vtkm_filter)

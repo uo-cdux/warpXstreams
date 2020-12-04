@@ -23,6 +23,7 @@
 #include "Config.h"
 #include "SeedGenerator.hxx"
 #include "ValidateOptions.hxx"
+#include "FilterStreamlines.h"
 
 namespace detail
 {
@@ -121,10 +122,11 @@ int main(int argc, char **argv) {
   vtkm::Vec3f spacing = {bounds.X.Length() / (dims[0] - 1),
                          bounds.Y.Length() / (dims[1] - 1),
                          bounds.Z.Length() / (dims[2] - 1)};
+  std::cout << spacing << std::endl; 
   constexpr static vtkm::FloatDefault SPEED_OF_LIGHT =
     static_cast<vtkm::FloatDefault>(2.99792458e8);
   spacing = spacing * spacing;
-  length = length / (SPEED_OF_LIGHT * vtkm::Sqrt(1./spacing[0] + 1./spacing[1] + 1./spacing[2]));
+  length = 1.0 / (SPEED_OF_LIGHT * vtkm::Sqrt(1./spacing[0] + 1./spacing[1] + 1./spacing[2]));
   std::cout << "CFL length : " << length << std::endl;
 
   vtkm::cont::Timer timer;
@@ -202,17 +204,17 @@ int main(int argc, char **argv) {
   vtkm::cont::CellSetExplicit<> polylines;
   polylines.Fill(streams.GetNumberOfValues(), cellTypes, connectivity, offsets);
 
-//  auto cellIndexP = cellIndex.ReadPortal();
-//  auto offsetP = offsets.ReadPortal();
-//  for(vtkm::Id i = 0; i < 10; i++)
-//    std::cout << cellIndexP.Get(i) << " : " << offsetP.Get(i) << std::endl;
-
   vtkm::cont::DataSet output;
   output.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", streams));
   output.SetCellSet(polylines);
 
   vtkm::io::VTKDataSetWriter writer("streams.vtk");
   writer.WriteDataSet(output);
+
+  auto tempdata = FilterStreamLines(output);
+
+  vtkm::io::VTKDataSetWriter writer1("tempdata.vtk");
+  writer1.WriteDataSet(tempdata);
 
   return 1;
 }
