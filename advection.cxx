@@ -78,7 +78,8 @@ int main(int argc, char **argv) {
                     ("steps",   options::value<vtkm::Id>()->required(),           "Number of Steps")
                     ("length",  options::value<vtkm::FloatDefault>()->required(), "Length of a single step")
                     ("seeds",   options::value<vtkm::Id>(),        "Number of seeds for random/single seeding")
-                    ("seeddata", options::value<std::string>()->required(), "VTK file to read electrons from");
+                    ("seeddata",  options::value<std::string>()->required(), "VTK file to read electrons from")
+                    ("threshold", options::value<vtkm::FloatDefault>()->required(), "Foltering threshold");
 
   options::variables_map vm;
   std::ifstream settings_file(std::string(argv[1]), std::ifstream::in);
@@ -99,6 +100,7 @@ int main(int argc, char **argv) {
   vtkm::FloatDefault length = config.GetStepLength();
   vtkm::Id numSeeds = config.GetNumSeeds();
   std::string seeddata = config.GetSeedData();
+  vtkm::FloatDefault threshold = config.GetThreshold();
 
   using ArrayType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
   using FieldType = vtkm::worklet::particleadvection::ElectroMagneticField<ArrayType>;
@@ -122,7 +124,7 @@ int main(int argc, char **argv) {
   vtkm::Vec3f spacing = {bounds.X.Length() / (dims[0] - 1),
                          bounds.Y.Length() / (dims[1] - 1),
                          bounds.Z.Length() / (dims[2] - 1)};
-  std::cout << spacing << std::endl; 
+  std::cout << spacing << std::endl;
   constexpr static vtkm::FloatDefault SPEED_OF_LIGHT =
     static_cast<vtkm::FloatDefault>(2.99792458e8);
   spacing = spacing * spacing;
@@ -208,13 +210,13 @@ int main(int argc, char **argv) {
   output.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", streams));
   output.SetCellSet(polylines);
 
-  vtkm::io::VTKDataSetWriter writer("streams.vtk");
-  writer.WriteDataSet(output);
+  //vtkm::io::VTKDataSetWriter writer("toCompare.vtk");
+  //writer.WriteDataSet(output);
 
-  auto tempdata = FilterStreamLines(output);
+  auto filtereddata = FilterStreamLines(output, threshold);
 
-  vtkm::io::VTKDataSetWriter writer1("tempdata.vtk");
-  writer1.WriteDataSet(tempdata);
+  vtkm::io::VTKDataSetWriter writer1("streams.vtk");
+  writer1.WriteDataSet(filtereddata);
 
   return 1;
 }
