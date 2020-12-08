@@ -48,7 +48,7 @@ public:
       maxCurvature = vtkm::Max(static_cast<vtkm::FloatDefault>(maxCurvature),
                                static_cast<vtkm::FloatDefault>(curvature));
     }
-    vtkm::FloatDefault meanCurvature = sumCurvature / (vtkm::FloatDefault(numPoints) - 2);
+    //vtkm::FloatDefault meanCurvature = sumCurvature / (vtkm::FloatDefault(numPoints) - 2);
     output = sumCurvature;
     if(output > this->Threshold)
       pass = 1;
@@ -105,8 +105,6 @@ vtkm::cont::DataSet FilterStreamLines(const vtkm::cont::DataSet& input,
   vtkm::cont::DynamicCellSet cells = input.GetCellSet();
   vtkm::cont::CoordinateSystem coords = input.GetCoordinateSystem();
 
-  std::cout << "Getting entropies" << std::endl;
-
   detail::AngularEntropy entropyWorklet(threshold);
   invoker(entropyWorklet, cells, coords.GetData(), filter, maxCurvature);
 
@@ -122,8 +120,6 @@ vtkm::cont::DataSet FilterStreamLines(const vtkm::cont::DataSet& input,
     std::cout << "Curvature 50% : " << portal.Get(50*(vtkm::FloatDefault(values)/100.)) << std::endl;
   }
 
-  std::cout << "Finished entropies" << std::endl;
-
   using UnstructuredType = vtkm::cont::CellSetExplicit<>;
   UnstructuredType streams = cells.Cast<UnstructuredType>();
 
@@ -133,11 +129,8 @@ vtkm::cont::DataSet FilterStreamLines(const vtkm::cont::DataSet& input,
   auto inOffsets = streams.GetOffsetsArray(visitTopo, incidentTopo);
   auto inConnectivity = streams.GetConnectivityArray(visitTopo, incidentTopo);
 
-  std::cout << "Getting Offsets and Counts" << std::endl;
-
   vtkm::cont::ArrayHandle<vtkm::Id> inCounts;
   invoker(detail::CountAndOffset(), cells, inCounts);
-  std::cout << "Finish Offsets and Counts" << std::endl;
 
   vtkm::cont::ArrayHandle<vtkm::Id> offsets;
   vtkm::cont::ArrayHandle<vtkm::Id> counts;

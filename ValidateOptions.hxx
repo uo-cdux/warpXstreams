@@ -54,6 +54,10 @@ int ValidateOptions(options::variables_map& vm,
   if(!vm.count("seeddata"))
     return -1;
   config.SetSeedData(vm["seeddata"].as<std::string>());
+  if(!vm.count("threshold"))
+    config.SetThreshold(0.0);
+  config.SetThreshold(vm["threshold"].as<vtkm::FloatDefault>());
+
 
 /*  config::SeedingOption seeding  = static_cast<config::SeedingOption>(vm["seeding"].as<int>());
   config.SetSeeding(seeding);

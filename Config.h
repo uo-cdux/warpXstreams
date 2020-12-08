@@ -53,6 +53,8 @@ public:
   void SetSeedData(const std::string& seedData){this->SeedData = seedData;}
   std::string GetSeedData() const {return this->SeedData;}
 
+  void SetThreshold(vtkm::FloatDefault threshold) {this->Threshold = threshold;}
+  vtkm::FloatDefault GetThreshold() const {return this->Threshold;}
 private:
   std::string DataSetName;
   std::string FieldName;
@@ -65,6 +67,7 @@ private:
   vtkm::Id3 Dimensions;
   vtkm::Id SeedCount;
   std::string SeedData;
+  vtkm::FloatDefault Threshold;
 };
 
 } //namespace seeding
