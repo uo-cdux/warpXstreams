@@ -115,10 +115,10 @@ void MakeRandomSeeds(vtkm::Id seedCount,
   vtkm::cont::ArrayCopy(tmp, seeds);
 }
 
-class GetElectrons : public vtkm::worklet::WorkletMapField
+class GetChargedParticles : public vtkm::worklet::WorkletMapField
 {
 public:
-  GetElectrons(vtkm::Bounds& samplingBounds)
+  GetChargedParticles(vtkm::Bounds& samplingBounds)
   : SamplingBounds(samplingBounds)
   {}
 
@@ -142,7 +142,7 @@ public:
                   const vtkm::FloatDefault& uy,
                   const vtkm::FloatDefault& uz,
                   const vtkm::FloatDefault& w,
-                  vtkm::Electron& electron,
+                  vtkm::ChargedParticle& electron,
                   vtkm::Id& filter) const
   {
     constexpr static vtkm::FloatDefault SPEED_OF_LIGHT =
@@ -151,7 +151,7 @@ public:
     auto momentum = vtkm::Vec3f(ux, uy, uz);
     // Change momentum to SI units
     momentum = momentum * mass * SPEED_OF_LIGHT;
-    electron = vtkm::Electron(position, index, mass, charge, w, momentum);
+    electron = vtkm::ChargedParticle(position, index, mass, charge, w, momentum);
     if(this->SamplingBounds.Contains(position))
     {
       filter = 1;
@@ -166,9 +166,9 @@ private :
   vtkm::Bounds SamplingBounds;
 };
 
-void GenerateElectrons(const config::Config& config,
+void GenerateChargedParticles(const config::Config& config,
                        const vtkm::cont::DataSet& dataset,
-                       vtkm::cont::ArrayHandle<vtkm::Electron>& seeds,
+                       vtkm::cont::ArrayHandle<vtkm::ChargedParticle>& seeds,
                        vtkm::cont::ArrayHandle<vtkm::Id>& filter)
 {
   vtkm::cont::Invoker invoker;
@@ -183,7 +183,7 @@ void GenerateElectrons(const config::Config& config,
    if(useSamplingBounds[2] == 0)
      samplingBounds.Z = dataBounds.Z;
 
-  GetElectrons worklet(samplingBounds);
+  GetChargedParticles worklet(samplingBounds);
   std::cout << "Sampling Bounds : " << samplingBounds << std::endl;
   //vtkm::cont::ArrayHandle<vtkm::Vec3f> positions;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> mass, charge, weighting;

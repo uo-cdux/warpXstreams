@@ -34,7 +34,7 @@ public:
   GetSteps() {}
   using ControlSignature = void(FieldIn, FieldOut);
   using ExecutionSignature = void(_1, _2);
-  VTKM_EXEC void operator()(const vtkm::Electron& p, vtkm::Id& numSteps) const
+  VTKM_EXEC void operator()(const vtkm::ChargedParticle& p, vtkm::Id& numSteps) const
   {
     numSteps = p.NumSteps;
   }
@@ -50,7 +50,7 @@ public:
 
   // Offset is number of points in streamline.
   // 1 (inital point) + number of steps taken (p.NumSteps - initalNumSteps)
-  VTKM_EXEC void operator()(const vtkm::Electron& p,
+  VTKM_EXEC void operator()(const vtkm::ChargedParticle& p,
                             const vtkm::Id& initialNumSteps,
                             vtkm::Id& diff) const
   {
@@ -108,10 +108,10 @@ int main(int argc, char **argv) {
   using ArrayType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
   using FieldType = vtkm::worklet::particleadvection::ElectroMagneticField<ArrayType>;
   using IndexType = vtkm::cont::ArrayHandle<vtkm::Id>;
-  using SeedsType = vtkm::cont::ArrayHandle<vtkm::Electron>;
+  using SeedsType = vtkm::cont::ArrayHandle<vtkm::ChargedParticle>;
   using EvaluatorType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
   using IntegratorType = vtkm::worklet::particleadvection::EulerIntegrator<EvaluatorType>;
-  using ParticleType = vtkm::worklet::particleadvection::StateRecordingParticles<vtkm::Electron>;
+  using ParticleType = vtkm::worklet::particleadvection::StateRecordingParticles<vtkm::ChargedParticle>;
   using AdvectionWorklet = vtkm::worklet::particleadvection::ParticleAdvectWorklet;
 
   vtkm::io::VTKDataSetReader dataReader(data);
@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
     vtkm::io::VTKDataSetReader seedsReader(seeddata);
     vtkm::cont::DataSet seedsData = seedsReader.ReadDataSet();
     vtkm::cont::ArrayHandle<vtkm::Id> filter;
-    seeding::GenerateElectrons(config, seedsData, allSeeds, filter);
+    seeding::GenerateChargedParticles(config, seedsData, allSeeds, filter);
     SeedsType _allSeeds;
     vtkm::cont::Algorithm::CopyIf(allSeeds, filter, _allSeeds);
 
