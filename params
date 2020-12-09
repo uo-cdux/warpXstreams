@@ -1,0 +1,11 @@
+data=data/vtk_fields_0000250.vtk
+#steps=10
+steps=120
+length=0.1
+seeds=50
+#seeds=1
+seeddata=data/vtk_specie_beam_0000250.vtk
+threshold=0
+sampleZ=-6.5000e-05:-5.00668e-05
+#threshold=758338
+#threshold=2.8e+06
