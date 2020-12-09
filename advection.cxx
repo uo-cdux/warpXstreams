@@ -79,7 +79,10 @@ int main(int argc, char **argv) {
                     ("length",  options::value<vtkm::FloatDefault>()->required(), "Length of a single step")
                     ("seeds",   options::value<vtkm::Id>(),        "Number of seeds for random/single seeding")
                     ("seeddata",  options::value<std::string>()->required(), "VTK file to read electrons from")
-                    ("threshold", options::value<vtkm::FloatDefault>()->required(), "Foltering threshold");
+                    ("threshold", options::value<vtkm::FloatDefault>()->required(), "Foltering threshold")
+                    ("sampleX",  options::value<std::string>(), "Seed sampling range X")
+                    ("sampleY",  options::value<std::string>(), "Seed sampling range Y")
+                    ("sampleZ",  options::value<std::string>(), "Seed sampling range Z");
 
   options::variables_map vm;
   std::ifstream settings_file(std::string(argv[1]), std::ifstream::in);
@@ -151,17 +154,20 @@ int main(int argc, char **argv) {
     SeedsType allSeeds;
     vtkm::io::VTKDataSetReader seedsReader(seeddata);
     vtkm::cont::DataSet seedsData = seedsReader.ReadDataSet();
-    seeding::GenerateElectrons(seedsData, allSeeds);
+    vtkm::cont::ArrayHandle<vtkm::Id> filter;
+    seeding::GenerateElectrons(config, seedsData, allSeeds, filter);
+    SeedsType _allSeeds;
+    vtkm::cont::Algorithm::CopyIf(allSeeds, filter, _allSeeds);
+
+    auto count = vtkm::cont::Algorithm::Reduce(filter, static_cast<vtkm::Id>(0));
+    std::cout << "Sampled " << count << " electrons" << std::endl;
 
     std::vector<vtkm::Id> randoms;
-    GenerateRandomIndices(randoms, numSeeds, allSeeds.GetNumberOfValues());
+    GenerateRandomIndices(randoms, numSeeds, _allSeeds.GetNumberOfValues());
     IndexType toKeep = vtkm::cont::make_ArrayHandle(randoms, vtkm::CopyFlag::On);
 
-    vtkm::cont::ArrayHandlePermutation<IndexType, SeedsType> temp(toKeep, allSeeds);
+    vtkm::cont::ArrayHandlePermutation<IndexType, SeedsType> temp(toKeep, _allSeeds);
     vtkm::cont::Algorithm::Copy(temp, seeds);
-    auto portal = seeds.ReadPortal();
-    for (vtkm::Id i = 0; i < portal.GetNumberOfValues(); i++)
-      auto electron = portal.Get(i);
   }
 
   vtkm::cont::Invoker invoker;

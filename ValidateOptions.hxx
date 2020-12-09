@@ -58,6 +58,28 @@ int ValidateOptions(options::variables_map& vm,
     config.SetThreshold(0.0);
   config.SetThreshold(vm["threshold"].as<vtkm::FloatDefault>());
 
+  vtkm::Bounds bounds;
+  vtkm::Id3 sampling(0,0,0);
+  if(vm.count("sampleX"))
+  {
+    sampling[0] = 1;
+    std::vector<vtkm::FloatDefault> xextent = Tokenize<vtkm::FloatDefault>(vm["sampleX"].as<std::string>());
+    bounds.X = vtkm::Range(xextent.at(0), xextent.at(1));
+  }
+  if(vm.count("sampleY"))
+  {
+    sampling[1] = 1;
+    std::vector<vtkm::FloatDefault> yextent = Tokenize<vtkm::FloatDefault>(vm["sampleY"].as<std::string>());
+    bounds.Y = vtkm::Range(yextent.at(0), yextent.at(1));
+  }
+  if(vm.count("sampleZ"))
+  {
+    sampling[2] = 1;
+    std::vector<vtkm::FloatDefault> zextent = Tokenize<vtkm::FloatDefault>(vm["sampleZ"].as<std::string>());
+    bounds.Z = vtkm::Range(zextent.at(0), zextent.at(1));
+  }
+  config.SetBounds(bounds);
+  config.SetUserExtents(sampling);
 
 /*  config::SeedingOption seeding  = static_cast<config::SeedingOption>(vm["seeding"].as<int>());
   config.SetSeeding(seeding);

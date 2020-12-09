@@ -118,14 +118,19 @@ void MakeRandomSeeds(vtkm::Id seedCount,
 class GetElectrons : public vtkm::worklet::WorkletMapField
 {
 public:
+  GetElectrons(vtkm::Bounds& samplingBounds)
+  : SamplingBounds(samplingBounds)
+  {}
+
   using ControlSignature = void(FieldIn x, FieldIn y, FieldIn z,
                                 FieldIn mass,
                                 FieldIn charge,
                                 FieldIn ux, FieldIn uy, FieldIn uz,
                                 FieldIn weighting,
-                                FieldOut);
+                                FieldOut electron,
+                                FieldOut filter);
 
-  using ExecutionSignature = void(WorkIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10);
+  using ExecutionSignature = void(WorkIndex, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11);
 
   void operator()(const vtkm::Id index,
                   const vtkm::FloatDefault& x,
@@ -137,21 +142,49 @@ public:
                   const vtkm::FloatDefault& uy,
                   const vtkm::FloatDefault& uz,
                   const vtkm::FloatDefault& w,
-                  vtkm::Electron& electron) const
+                  vtkm::Electron& electron,
+                  vtkm::Id& filter) const
   {
-    // Change momentum to SI units
     constexpr static vtkm::FloatDefault SPEED_OF_LIGHT =
       static_cast<vtkm::FloatDefault>(2.99792458e8);
-    auto momentum = vtkm::Vec3f(ux,uy,uz);
+    auto position = vtkm::Vec3f(x, y, z);
+    auto momentum = vtkm::Vec3f(ux, uy, uz);
+    // Change momentum to SI units
     momentum = momentum * mass * SPEED_OF_LIGHT;
-    electron = vtkm::Electron(vtkm::Vec3f(x,y,z), index, mass, charge, w, momentum);
+    electron = vtkm::Electron(position, index, mass, charge, w, momentum);
+    if(this->SamplingBounds.Contains(position))
+    {
+      filter = 1;
+    }
+    else
+    {
+      filter = 0;
+    }
   }
+
+private :
+  vtkm::Bounds SamplingBounds;
 };
 
-void GenerateElectrons(vtkm::cont::DataSet& dataset,
-                       vtkm::cont::ArrayHandle<vtkm::Electron>& seeds)
+void GenerateElectrons(const config::Config& config,
+                       const vtkm::cont::DataSet& dataset,
+                       vtkm::cont::ArrayHandle<vtkm::Electron>& seeds,
+                       vtkm::cont::ArrayHandle<vtkm::Id>& filter)
 {
   vtkm::cont::Invoker invoker;
+  vtkm::Bounds samplingBounds = config.GetBounds();
+  vtkm::Id3 useSamplingBounds = config.GetUserExtents();
+
+  vtkm::Bounds dataBounds = dataset.GetCoordinateSystem().GetBounds();
+   if(useSamplingBounds[0] == 0)
+     samplingBounds.X = dataBounds.X;
+   if(useSamplingBounds[1] == 0)
+     samplingBounds.Y = dataBounds.Y;
+   if(useSamplingBounds[2] == 0)
+     samplingBounds.Z = dataBounds.Z;
+
+  GetElectrons worklet(samplingBounds);
+  std::cout << "Sampling Bounds : " << samplingBounds << std::endl;
   //vtkm::cont::ArrayHandle<vtkm::Vec3f> positions;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> mass, charge, weighting;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> x, y, z, mom_x, mom_y, mom_z;
@@ -164,7 +197,7 @@ void GenerateElectrons(vtkm::cont::DataSet& dataset,
   dataset.GetField("uy").GetData().CopyTo(mom_y);
   dataset.GetField("uz").GetData().CopyTo(mom_z);
   dataset.GetField("w").GetData().CopyTo(weighting);
-  invoker(GetElectrons{}, x, y, z, mass, charge, mom_x, mom_y, mom_z, weighting, seeds);
+  invoker(worklet, x, y, z, mass, charge, mom_x, mom_y, mom_z, weighting, seeds, filter);
 }
 
 
