@@ -8,12 +8,14 @@
 #include <vtkm/Types.h>
 #include <vtkm/cont/Algorithm.h>
 #include <vtkm/cont/ArrayCopy.h>
+#include <vtkm/cont/ArrayHandlePermutation.h>
 #include <vtkm/cont/Timer.h>
+
 #include <vtkm/io/VTKDataSetReader.h>
 #include <vtkm/io/VTKDataSetWriter.h>
+
 #include <vtkm/worklet/ParticleAdvection.h>
 #include <vtkm/worklet/WorkletMapField.h>
-
 #include <vtkm/worklet/particleadvection/Field.h>
 #include <vtkm/worklet/particleadvection/GridEvaluators.h>
 #include <vtkm/worklet/particleadvection/EulerIntegrator.h>
@@ -23,7 +25,6 @@
 #include "Config.h"
 #include "SeedGenerator.hxx"
 #include "ValidateOptions.hxx"
-#include "FilterStreamlines.h"
 
 namespace detail
 {
@@ -110,7 +111,8 @@ int main(int argc, char **argv) {
   using IndexType = vtkm::cont::ArrayHandle<vtkm::Id>;
   using SeedsType = vtkm::cont::ArrayHandle<vtkm::ChargedParticle>;
   using EvaluatorType = vtkm::worklet::particleadvection::GridEvaluator<FieldType>;
-  using IntegratorType = vtkm::worklet::particleadvection::EulerIntegrator<EvaluatorType>;
+  using IntegratorType = vtkm::worklet::particleadvection::RK4Integrator<EvaluatorType>;
+  using Stepper = vtkm::worklet::particleadvection::Stepper<IntegratorType, EvaluatorType>;
   using ParticleType = vtkm::worklet::particleadvection::StateRecordingParticles<vtkm::ChargedParticle>;
   using AdvectionWorklet = vtkm::worklet::particleadvection::ParticleAdvectWorklet;
 
@@ -138,12 +140,12 @@ int main(int argc, char **argv) {
   timer.Start();
 
   ArrayType electric, magnetic;
-  dataset.GetField("E").GetData().CopyTo(electric);
-  dataset.GetField("B").GetData().CopyTo(magnetic);
+  dataset.GetField("E").GetData().AsArrayHandle(electric);
+  dataset.GetField("B").GetData().AsArrayHandle(magnetic);
   FieldType electromagnetic(electric, magnetic);
 
   EvaluatorType evaluator(coords, cells, electromagnetic);
-  IntegratorType integrator(evaluator, length);
+  Stepper stepper(evaluator, length);
 
   /*
    * Make seeds based on the seeding option.
@@ -185,7 +187,7 @@ int main(int argc, char **argv) {
   timer.Reset();
 
   timer.Start();
-  invoker(AdvectionWorklet{}, indices, integrator, particles, particleSteps);
+  invoker(AdvectionWorklet{}, indices, stepper, particles, particleSteps);
   timer.Stop();
 
   std::cout << "Advection : " << timer.GetElapsedTime() << std::endl;
@@ -208,7 +210,7 @@ int main(int argc, char **argv) {
     vtkm::cont::make_ArrayHandleConstant<vtkm::UInt8>(vtkm::CELL_SHAPE_POLY_LINE, numSeeds);
   vtkm::cont::ArrayCopy(polyLineShape, cellTypes);
   auto numIndices = vtkm::cont::make_ArrayHandleCast(numPoints, vtkm::IdComponent());
-  auto offsets = vtkm::cont::ConvertNumIndicesToOffsets(numIndices);
+  auto offsets = vtkm::cont::ConvertNumComponentsToOffsets(numIndices);
   vtkm::cont::CellSetExplicit<> polylines;
   polylines.Fill(streams.GetNumberOfValues(), cellTypes, connectivity, offsets);
 
@@ -216,13 +218,8 @@ int main(int argc, char **argv) {
   output.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", streams));
   output.SetCellSet(polylines);
 
-  //vtkm::io::VTKDataSetWriter writer("toCompare.vtk");
-  //writer.WriteDataSet(output);
-
-  auto filtereddata = FilterStreamLines(output, threshold);
-
   vtkm::io::VTKDataSetWriter writer1("streams.vtk");
-  writer1.WriteDataSet(filtereddata);
+  writer1.WriteDataSet(output);
 
   return 1;
 }

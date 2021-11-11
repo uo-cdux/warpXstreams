@@ -188,15 +188,15 @@ void GenerateChargedParticles(const config::Config& config,
   //vtkm::cont::ArrayHandle<vtkm::Vec3f> positions;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> mass, charge, weighting;
   vtkm::cont::ArrayHandle<vtkm::FloatDefault> x, y, z, mom_x, mom_y, mom_z;
-  dataset.GetField("x").GetData().CopyTo(x);
-  dataset.GetField("y").GetData().CopyTo(y);
-  dataset.GetField("z").GetData().CopyTo(z);
-  dataset.GetField("mass").GetData().CopyTo(mass);
-  dataset.GetField("charge").GetData().CopyTo(charge);
-  dataset.GetField("ux").GetData().CopyTo(mom_x);
-  dataset.GetField("uy").GetData().CopyTo(mom_y);
-  dataset.GetField("uz").GetData().CopyTo(mom_z);
-  dataset.GetField("w").GetData().CopyTo(weighting);
+  dataset.GetField("x").GetData().AsArrayHandle(x);
+  dataset.GetField("y").GetData().AsArrayHandle(y);
+  dataset.GetField("z").GetData().AsArrayHandle(z);
+  dataset.GetField("mass").GetData().AsArrayHandle(mass);
+  dataset.GetField("charge").GetData().AsArrayHandle(charge);
+  dataset.GetField("ux").GetData().AsArrayHandle(mom_x);
+  dataset.GetField("uy").GetData().AsArrayHandle(mom_y);
+  dataset.GetField("uz").GetData().AsArrayHandle(mom_z);
+  dataset.GetField("w").GetData().AsArrayHandle(weighting);
   invoker(worklet, x, y, z, mass, charge, mom_x, mom_y, mom_z, weighting, seeds, filter);
 }
 
