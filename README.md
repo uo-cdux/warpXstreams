@@ -32,4 +32,41 @@ More WarpX data is available [here](https://www.dropbox.com/s/nfx3z35d916miw5/20
 All the data is available as `hdf5` files.
 They need to be converted into `vtk` in order to use the code example from this repository.
 
-The conversion can be done as:
+For converting the WarpX files to VTK you'll need to perform the following steps.
+
+1. Download and install `opmd2VTK`
+   More instructions on the installation can be found [here](https://github.com/hightower8083/opmd2VTK)
+
+2. Convert the data using the following script  
+```
+import sys
+import os
+import os.path
+
+opmdpath='/home/abhishek/repositories/opmd2VTK/install/lib/python3.6/site-packages/opmd2VTK-0-py3.6.egg'
+pyvtkpath='/home/abhishek/repositories/opmd2VTK/install/lib/python3.6/site-packages/PyVTK-0.5.18-py3.6.egg'
+sys.path.append(opmdpath)
+sys.path.append(pyvtkpath)
+
+from openpmd_viewer import OpenPMDTimeSeries
+from opmd2VTK.pyvtk import Opmd2VTK
+
+datadir = sys.argv[1]
+if os.path.isdir(datadir) and os.access(datadir, os.R_OK):
+  ts = OpenPMDTimeSeries(datadir)
+  conv = Opmd2VTK(ts)
+  for i in range(0, len(ts.iterations)):
+    conv.write_fields_vtk(iteration=ts.iterations[i], format='binary')
+    conv.write_species_vtk(iteration=ts.iterations[i], format='binary')
+else:
+  print("Data directory cannot be accessed")
+  sys.exit(-1)
+
+```
+The script requires the path to the directory which contains all the `WarpX hdf5` files as an input.
+After extracting the archive from the link you can execute
+```
+python converter.py diag_openpmd
+```
+
+That's all :)
