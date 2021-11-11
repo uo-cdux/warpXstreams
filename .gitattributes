@@ -1,3 +1,0 @@
-data/structured.vtk filter=lfs diff=lfs merge=lfs -text
-data/unstructured.vtk filter=lfs diff=lfs merge=lfs -text
-data/simple.vtk filter=lfs diff=lfs merge=lfs -text
