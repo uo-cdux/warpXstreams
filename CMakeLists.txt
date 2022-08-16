@@ -27,3 +27,12 @@ vtkm_add_target_information(advection
 if(TARGET vtkm::tbb)
   target_compile_definitions(advection PRIVATE BUILDING_TBB_VERSION)
 endif()
+
+add_executable(vtkmfilter vtkmfilter.cxx Config.h SeedGenerator.hxx ValidateOptions.hxx FilterStreamlines.h)
+target_link_libraries(vtkmfilter PRIVATE vtkm_cont vtkm_io vtkm_worklet vtkm_filter ${Boost_LIBRARIES})
+vtkm_add_target_information(vtkmfilter
+                            DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
+                            DEVICE_SOURCES vtkmfilter.cxx)
+if(TARGET vtkm::tbb)
+  target_compile_definitions(vtkmfilter PRIVATE BUILDING_TBB_VERSION)
+endif()

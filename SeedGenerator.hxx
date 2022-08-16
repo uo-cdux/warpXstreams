@@ -200,7 +200,6 @@ void GenerateChargedParticles(const config::Config& config,
   invoker(worklet, x, y, z, mass, charge, mom_x, mom_y, mom_z, weighting, seeds, filter);
 }
 
-
 void GenerateSeeds(const config::Config& config,
                    const vtkm::cont::DataSet& dataset,
                    vtkm::cont::ArrayHandle<vtkm::Particle>& seeds)

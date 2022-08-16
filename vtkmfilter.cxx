@@ -3,7 +3,6 @@
 #include <iostream>
 #include <string>
 
-#include "boost/program_options.hpp"
 
 #include <vtkm/Types.h>
 #include <vtkm/cont/Algorithm.h>
@@ -16,17 +15,13 @@
 
 #include <vtkm/worklet/WorkletMapField.h>
 
-#include <vtkm/filter/flow/worklet/ParticleAdvection.h>
-#include <vtkm/filter/flow/worklet/Field.h>
-#include <vtkm/filter/flow/worklet/GridEvaluators.h>
-#include <vtkm/filter/flow/worklet/EulerIntegrator.h>
-#include <vtkm/filter/flow/worklet/RK4Integrator.h>
-#include <vtkm/filter/flow/worklet/Stepper.h>
-#include <vtkm/filter/flow/worklet/ParticleAdvectionWorklets.h>
+#include <vtkm/filter/flow/Streamline.h>
 
 #include "Config.h"
 #include "SeedGenerator.hxx"
 #include "ValidateOptions.hxx"
+
+#include <stdio.h>
 
 namespace detail
 {
@@ -60,6 +55,36 @@ public:
       diff = 1 + p.NumSteps - initialNumSteps;
   }
 };
+
+class ExtractParticleData : public vtkm::worklet::WorkletMapField
+{
+public:
+  ExtractParticleData() {};
+  using ControlSignature = void (FieldIn, FieldOut, FieldOut, FieldOut, FieldOut, FieldOut);
+
+  VTKM_EXEC void operator()(const vtkm::ChargedParticle& particle,
+                            vtkm::Vec3f& position,
+                            vtkm::Vec3f& momentum,
+                            vtkm::FloatDefault& mass,
+                            vtkm::FloatDefault& charge,
+                            vtkm::FloatDefault& weighting) const
+  {
+    position  = particle.Pos;
+    momentum  = particle.Momentum;
+    mass      = particle.Mass;
+    charge    = particle.Charge;
+    weighting = particle.Weighting;
+  }
+};
+
+void ExtractDataSetFromSeeds(const vtkm::cont::ArrayHandle<vtkm::ChargedParticle>& seeds)
+{
+  vtkm::cont::ArrayHandle<vtkm::Vec3f> pos, mom;
+  vtkm::cont::ArrayHandle<vtkm::FloatDefault> mass, charge, weighting;
+  vtkm::cont::Invoker invoker;
+  invoker(ExtractParticleData{}, seeds, pos, mom, mass, charge, weighting);
+}
+
 
 } // namespace detail
 
@@ -109,15 +134,17 @@ int main(int argc, char **argv) {
   vtkm::FloatDefault threshold = config.GetThreshold();
 
   using ArrayType = vtkm::cont::ArrayHandle<vtkm::Vec3f>;
+  using SeedsType = vtkm::cont::ArrayHandle<vtkm::ChargedParticle>;
+  using IndexType = vtkm::cont::ArrayHandle<vtkm::Id>;
+/*
   using FieldType = vtkm::worklet::flow::ElectroMagneticField<ArrayType>;
   using IndexType = vtkm::cont::ArrayHandle<vtkm::Id>;
-  using SeedsType = vtkm::cont::ArrayHandle<vtkm::ChargedParticle>;
   using EvaluatorType = vtkm::worklet::flow::GridEvaluator<FieldType>;
   using IntegratorType = vtkm::worklet::flow::RK4Integrator<EvaluatorType>;
   using Stepper = vtkm::worklet::flow::Stepper<IntegratorType, EvaluatorType>;
   using ParticleType = vtkm::worklet::flow::StateRecordingParticles<vtkm::ChargedParticle>;
   using AdvectionWorklet = vtkm::worklet::flow::ParticleAdvectWorklet;
-
+*/
   vtkm::io::VTKDataSetReader dataReader(data);
   vtkm::cont::DataSet dataset = dataReader.ReadDataSet();
   vtkm::cont::DynamicCellSet cells = dataset.GetCellSet();
@@ -141,14 +168,14 @@ int main(int argc, char **argv) {
   vtkm::cont::Timer timer;
   timer.Start();
 
-  ArrayType electric, magnetic;
+/*  ArrayType electric, magnetic;
   dataset.GetField("E").GetData().AsArrayHandle(electric);
   dataset.GetField("B").GetData().AsArrayHandle(magnetic);
   FieldType electromagnetic(electric, magnetic);
 
   EvaluatorType evaluator(coords, cells, electromagnetic);
   Stepper stepper(evaluator, length);
-
+*/
   /*
    * Make seeds based on the seeding option.
    */
@@ -174,10 +201,13 @@ int main(int argc, char **argv) {
     vtkm::cont::Algorithm::Copy(temp, seeds);
   }
 
-  vtkm::cont::Invoker invoker;
+  detail::ExtractDataSetFromSeeds(seeds);
+
   std::cout << "Advecting " << seeds.GetNumberOfValues() << " particles" << std::endl;
 
-  vtkm::cont::ArrayHandle<vtkm::Id> initSteps;
+  vtkm::cont::Invoker invoker;
+
+  /*vtkm::cont::ArrayHandle<vtkm::Id> initSteps;
   invoker(detail::GetSteps{}, seeds, initSteps);
 
   vtkm::cont::ArrayHandleConstant<vtkm::Id> particleSteps(steps, seeds.GetNumberOfValues());
@@ -219,6 +249,17 @@ int main(int argc, char **argv) {
   vtkm::cont::DataSet output;
   output.AddCoordinateSystem(vtkm::cont::CoordinateSystem("coords", streams));
   output.SetCellSet(polylines);
+*/
+
+  vtkm::filter::flow::Streamline streamline;
+
+  streamline.SetStepSize(length);
+  streamline.SetNumberOfSteps(50);
+  streamline.SetSeeds(seeds);
+  streamline.SetVectorFieldType(vtkm::filter::flow::VectorFieldType::ELECTRO_MAGNETIC_FIELD_TYPE);
+  streamline.SetEField("E");
+  streamline.SetBField("B");
+  auto output = streamline.Execute(dataset);
 
   vtkm::io::VTKDataSetWriter writer1("streams.vtk");
   writer1.WriteDataSet(output);
