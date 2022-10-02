@@ -1,4 +1,4 @@
-data=data/vtk_fields_0000250.vtk
+data=data/visit_ex_db1.vtk
 #steps=10
 steps=50
 length=0.1

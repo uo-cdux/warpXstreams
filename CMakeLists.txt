@@ -10,29 +10,15 @@
 cmake_minimum_required(VERSION 3.8...3.15 FATAL_ERROR)
 project(advection CXX)
 
-list(APPEND CMAKE_MODULE_PATH "~/repositories/CMakeFindModules")
+set(VTKm_DIR "/home/local/KHQ/abhi.yenpure/repositories/mine/build/lib/cmake/vtkm-1.8/")
+set(VTK_DIR "/home/local/KHQ/abhi.yenpure/repositories/vtk/build/lib/cmake/vtk-9.2")
+set(CMAKE_CUDA_ARCHITECTURES 75)
 
 # Find the VTK-m package
+find_package(VTK REQUIRED QUIET)
 find_package(VTKm REQUIRED QUIET)
-
-# Boost
 FIND_PACKAGE(Boost COMPONENTS program_options REQUIRED)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
 
-add_executable(advection advection.cxx Config.h SeedGenerator.hxx ValidateOptions.hxx FilterStreamlines.h)
-target_link_libraries(advection PRIVATE vtkm_cont vtkm_io vtkm_worklet vtkm_filter ${Boost_LIBRARIES})
-vtkm_add_target_information(advection
-                            DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
-                            DEVICE_SOURCES advection.cxx)
-if(TARGET vtkm::tbb)
-  target_compile_definitions(advection PRIVATE BUILDING_TBB_VERSION)
-endif()
-
-add_executable(vtkmfilter vtkmfilter.cxx Config.h SeedGenerator.hxx ValidateOptions.hxx FilterStreamlines.h)
-target_link_libraries(vtkmfilter PRIVATE vtkm_cont vtkm_io vtkm_worklet vtkm_filter ${Boost_LIBRARIES})
-vtkm_add_target_information(vtkmfilter
-                            DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS
-                            DEVICE_SOURCES vtkmfilter.cxx)
-if(TARGET vtkm::tbb)
-  target_compile_definitions(vtkmfilter PRIVATE BUILDING_TBB_VERSION)
-endif()
+add_executable(savedata savedata.cxx Config.h SeedGenerator.hxx ValidateOptions.hxx FilterStreamlines.h)
+target_link_libraries(savedata PRIVATE vtkm_cont vtkm_io vtkm_worklet vtkm_filter ${Boost_LIBRARIES} ${VTK_LIBRARIES})

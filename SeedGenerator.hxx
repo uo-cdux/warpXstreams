@@ -166,6 +166,51 @@ private :
   vtkm::Bounds SamplingBounds;
 };
 
+class GetChargedParticles2 : public vtkm::worklet::WorkletMapField
+{
+public:
+  GetChargedParticles2() {}
+
+  using ControlSignature = void(FieldIn pos,
+                                FieldIn mom,
+                                FieldIn mass,
+                                FieldIn charge,
+                                FieldIn weighting,
+                                FieldOut electrons);
+
+  using ExecutionSignature = void(WorkIndex, _1, _2, _3, _4, _5, _6);
+
+  void operator()(const vtkm::Id index,
+                  const vtkm::Vec3f& pos,
+                  const vtkm::Vec3f& mom,
+                  const vtkm::FloatDefault& mass,
+                  const vtkm::FloatDefault& charge,
+                  const vtkm::FloatDefault& w,
+                  vtkm::ChargedParticle& electron) const
+  {
+    /*constexpr static vtkm::FloatDefault SPEED_OF_LIGHT =
+      static_cast<vtkm::FloatDefault>(2.99792458e8);
+    auto position = vtkm::Vec3f(x, y, z);
+    auto momentum = vtkm::Vec3f(ux, uy, uz);
+    // Change momentum to SI units
+    momentum = momentum * mass * SPEED_OF_LIGHT;*/
+    electron = vtkm::ChargedParticle(pos, index, mass, charge, w, mom);
+  }
+};
+
+
+void GenerateChargedParticles(const vtkm::cont::ArrayHandle<vtkm::Vec3f>& pos,
+                              const vtkm::cont::ArrayHandle<vtkm::Vec3f>& mom,
+                              const vtkm::cont::ArrayHandle<vtkm::FloatDefault>& mass,
+                              const vtkm::cont::ArrayHandle<vtkm::FloatDefault>& charge,
+                              const vtkm::cont::ArrayHandle<vtkm::FloatDefault>& weight,
+                              vtkm::cont::ArrayHandle<vtkm::ChargedParticle>& seeds)
+{
+  vtkm::cont::Invoker invoker;
+  GetChargedParticles2 worklet;
+  invoker(worklet, pos, mom, mass, charge, weight, seeds);
+}
+
 void GenerateChargedParticles(const config::Config& config,
                        const vtkm::cont::DataSet& dataset,
                        vtkm::cont::ArrayHandle<vtkm::ChargedParticle>& seeds,
